@@ -5,11 +5,10 @@ import json
 
 class ReceiveClient(object):
 
-	UDP_IP = "239.6.6.6"
-	UDP_PORT = 6666
-
-	def __init__(self):
+	def __init__(self,address="239.6.6.6",port=6666):
 		super(ReceiveClient, self).__init__()
+
+		self.UDP_IP,self.UDP_PORT = [address,port]
 
 		self.sock = socket.socket(socket.AF_INET,
 								socket.SOCK_DGRAM,
@@ -29,11 +28,9 @@ class ReceiveClient(object):
 
 	
 	def listen(self):
-		while True:
-			message,addr = self.sock.recvfrom(1024)
-			d = json.loads(message)
-			print d["VERB"]
-			print d["FILE"]
+		message,addr = self.sock.recvfrom(1024)
+		print "received"
+		return json.loads(message)
 
 
 if __name__ == "__main__":

@@ -4,12 +4,11 @@ import json
 
 class BroadcastClient(object):
 
-	UDP_IP = "239.6.6.6"
-	UDP_PORT = 6666
-
 	
-	def __init__(self):
+	def __init__(self,address="239.6.6.6",port=6666):
 		super(BroadcastClient, self).__init__()
+
+		self.UDP_IP,self.UDP_PORT = [address,port]
 
 		self.sock = socket.socket(socket.AF_INET,
 								socket.SOCK_DGRAM,
