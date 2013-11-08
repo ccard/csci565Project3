@@ -24,4 +24,4 @@ class BroadcastClient(object):
 
 if __name__ == "__main__":
 	bc = BroadcastClient()
-	bc.send_request()
+	bc.send_request("WANT","socat_broadcast.sh")

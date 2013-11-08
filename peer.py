@@ -1,37 +1,39 @@
 #! /usr/bin/env python
-from broadcastclient import BroadcastClient
-from receiveclient import ReceiveClient
+
+from twisted.internet.protocol import DatagramProtocol
+from twisted.internet import reactor
 import sys
 import json
 import os
 
-class Peer(object):
-	
-	UDP_IP = "239.6.6.6"
-	UDP_PORT = 6666
+class Peer(DatagramProtocol):
+    
+    UDP_IP = "239.6.6.6"
+    UDP_PORT = 6666
+        
+    def startProtocol(self):
+        # Set the TTL>1 so multicast will cross router hops:
+        self.transport.setTTL(5)
+        # Join a specific multicast group:
+        self.transport.joinGroup(self.UDP_IP)
+                    
 
-	def __init__(self,mypath=""):
-		super(Peer, self).__init__()
+    def datagramReceived(self,datagram, address):
+        print "Datagram %s received from %s" % (repr(datagram), repr(address))
+        msg = json.loads(datagram)
+        if msg["VERB"] == 'WANT':
+            files = os.listdir(os.getcwd())
+            if msg["FILE"] in files:
+                res = self.compile_message("HAVE",msg["FILE"])
+                self.transport.write(res, (self.UDP_IP, self.UDP_PORT))
 
-		self.listener = ReceiveClient(self.UDP_IP,self.UDP_PORT)
-		self.broadcast = BroadcastClient(self.UDP_IP,self.UDP_PORT)
-		
-	def listen(self):
-		while True:
-			request = self.listener.listen()
-			if request["VERB"] in "WANT":
-				files = os.listdir(os.getcwd())
-				if request["FILE"] in files:
-					print "i have the file"
-				else:
-					print "i dont have the file"
-
-	def query(self):
-		self.broadcast.send_request("WANT","socat_broadcast.sh")
+    def compile_message(self,verb,filename):
+        return json.dumps({"VERB": verb, "FILE": filename})
 
 if __name__ == "__main__":
-	peer = Peer()
-	if len(sys.argv) > 1:
-		peer.listen()
-	else:
-		peer.query()
+    peer = Peer()
+    # We use listenMultiple=True so that we can run
+    # multiple peers on the same machine
+    reactor.listenMulticast(6666, Peer(),
+                        listenMultiple=True)
+    reactor.run()
