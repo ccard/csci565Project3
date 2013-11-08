@@ -29,7 +29,6 @@ class ReceiveClient(object):
 	
 	def listen(self):
 		message,addr = self.sock.recvfrom(1024)
-		print "received"
 		return json.loads(message)
 
 
