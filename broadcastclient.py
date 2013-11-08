@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import socket
+import json
 
 class BroadcastClient(object):
 
@@ -18,10 +19,10 @@ class BroadcastClient(object):
 							2)
 
 	
-	def send_message(self,message):
-		self.sock.sendto(message,(self.UDP_IP,
+	def send_request(self,verb="WANT",filename="NOTHING"):
+		self.sock.sendto(json.dumps({"VERB":verb,"FILE":filename}),(self.UDP_IP,
 							self.UDP_PORT))
 
 if __name__ == "__main__":
 	bc = BroadcastClient()
-	bc.send_message("test")
+	bc.send_request()

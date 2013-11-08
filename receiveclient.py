@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import socket
 import struct
+import json
 
 class ReceiveClient(object):
 
@@ -30,7 +31,9 @@ class ReceiveClient(object):
 	def listen(self):
 		while True:
 			message,addr = self.sock.recvfrom(1024)
-			print "Recieved: ", message
+			d = json.loads(message)
+			print d["VERB"]
+			print d["FILE"]
 
 
 if __name__ == "__main__":
