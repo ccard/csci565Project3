@@ -18,6 +18,13 @@ class Shell:
 			useroption = raw_input("> ")
 			if useroption in self.commands:
 				print "valid option"
+				temp = self.commands[useroption]
+				if temp == "ls":
+					os.listdir(os.path.getcwd())
+				elif temp == "exit":
+					runShell = False
+			else:
+				print "No such command!"
 
 
 
