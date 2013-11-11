@@ -9,7 +9,7 @@ class Shell:
 	def __init__(self):
 		self.bc = BroadcastClient()
 		self.commands = {"find" : "WANT","get" : "DOWNLOAD",
-					"ls" : "ls","exit":"exit"]	
+					"ls" : "ls","exit":"exit"}
 		
 
 	def startShell(self):
@@ -20,7 +20,7 @@ class Shell:
 				print "valid option"
 				temp = self.commands[useroption]
 				if temp == "ls":
-					os.listdir(os.path.getcwd())
+					print os.listdir(os.getcwd())
 				elif temp == "exit":
 					runShell = False
 			else:
@@ -30,4 +30,5 @@ class Shell:
 
 
 if __name__ == "__main__":
-	startShell()
+	s = Shell()
+	s.startShell()
