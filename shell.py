@@ -33,7 +33,7 @@ class Shell:
 					print "No such command!"
 				else:
 					cmd,desired_file = cmd_parts
-					response = bc.send_request(cmd,desired_file)
+					response = self.bc.send_request(cmd,desired_file)
 					print response["VERB"]
 					print response["FILE"]
 
@@ -54,5 +54,6 @@ class Shell:
 
 
 if __name__ == "__main__":
+	os.chdir(os.getcwd()+"/lib")
 	s = Shell()
 	s.start_shell()
