@@ -21,7 +21,7 @@ class BroadcastClient(object):
 	def send_request(self,verb="WANT",filename="NOTHING"):
 		self.sock.sendto(json.dumps({"VERB":verb,"FILE":filename}),(self.UDP_IP,
 							self.UDP_PORT))
-		message,addr = self.sock.recvfrom(1024)
+		message,addr = self.sock.recvfrom(self.UDP_PORT)
 		return json.loads(message)
 
 if __name__ == "__main__":
