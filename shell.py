@@ -4,6 +4,7 @@ from broadcastclient import BroadcastClient
 import sys
 import os
 import re
+import json
 
 class Shell:
 	
@@ -32,7 +33,9 @@ class Shell:
 					print "No such command!"
 				else:
 					cmd,desired_file = cmd_parts
-					print cmd +" "+desired_file
+					response = bc.send_request(cmd,desired_file)
+					print response["VERB"]
+					print response["FILE"]
 
 	def _parse_remote_cmd(self,cmd):
 		parts = re.split("\s+",cmd)
