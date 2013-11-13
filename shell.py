@@ -11,8 +11,7 @@ import yaml
 class Shell:
 
     def __init__(self, latencies):
-        self.lat = latencies
-        self.bc = BroadcastClient()
+        self.bc = BroadcastClient(latencies)
         self.localcommands = ["help", "ls", "exit"]
         self.remoteCommands = {"find": "WANT", "get": "DOWNLOAD"}
 
@@ -36,8 +35,6 @@ class Shell:
                 else:
                     cmd, desired_file = cmd_parts
                     response = self.bc.send_request(cmd, desired_file)
-                    print response["VERB"]
-                    print response["FILE"]
 
     def _parse_remote_cmd(self, cmd):
         parts = re.split("\s+", cmd)

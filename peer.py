@@ -7,7 +7,7 @@ from twisted.web.server import Site
 import sys
 import json
 import os
-
+import time
 
 class Peer(DatagramProtocol):
 
@@ -22,7 +22,7 @@ class Peer(DatagramProtocol):
         self.transport.joinGroup(self.UDP_IP)
 
     def datagramReceived(self, datagram, address):
-        print "Datagram %s received from %s" % (repr(datagram), repr(address))
+        print "Datagram %s received from %s, %f" % (repr(datagram), repr(address),time.clock())
         msg = json.loads(datagram)
         if msg["VERB"] == 'WANT' or msg["VERB"] == 'DOWNLOAD':
             files = os.listdir(os.getcwd())
