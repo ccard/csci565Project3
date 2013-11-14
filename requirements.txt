@@ -1,0 +1,11 @@
+Flask==0.10.1
+Jinja2==2.7.1
+MarkupSafe==0.18
+Twisted==13.2.0
+Werkzeug==0.9.4
+autopep8==0.9.6
+fusepy==2.0.2
+itsdangerous==0.23
+pep8==1.4.6
+wsgiref==0.1.2
+zope.interface==4.0.5
