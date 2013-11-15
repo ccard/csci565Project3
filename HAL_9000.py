@@ -2,6 +2,7 @@
 
 from flask import Flask
 from flask import request
+from flask import jsonify
 from werkzeug.contrib.cache import SimpleCache
 
 import json
@@ -15,9 +16,9 @@ def query():
 	q = request.args.get('q','')
 	file_data = cache.get(q)
 	if file_data is not None:
-		return file_data
+		return jsonify(file_data)
 
-	return 404
+	return '',404
 
 
 @HAL_9000.route("/refresh",methods=['POST'])
@@ -36,11 +37,11 @@ def refresh():
 				if peer_name not in file_data['peers']:
 					file_data['peers'].append(peer_name)
 
-			cache.set(f,json.dumps(file_data),5)
+			cache.set(f,file_data,5*50)
 		else:
-			cache.set(f,json.dumps(cache_dict[f]),5)
+			cache.set(f,cache_dict[f],5*50)
 
-	return 204
+	return '',204
 
 
 if __name__ == "__main__":
@@ -49,4 +50,4 @@ if __name__ == "__main__":
 		print "./HAL_9000.py [PORT]"
 		exit()
 
-	HAL_9000.run(port=port)
+	HAL_9000.run(port=port,debug=True)
