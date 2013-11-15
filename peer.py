@@ -2,9 +2,11 @@
 import logging
 import os
 import errno
+import socket
 import time
 import threading
 import stat
+import json
 from os.path import realpath
 from sys import argv, exit
 from logging import debug, info, warn, error
@@ -41,6 +43,25 @@ class NapsterFilesystem(Operations):
         self.central_files = self.get_central_files()
         self.last_fetched = time.time()
 
+        # upload file list to refresh master server
+        self.refresh_files()
+        self.last_refreshed = time.time()
+
+    def refresh_files(self):
+        local_files = os.listdir(self.local)
+        payload = {f: "fake hash" for f in local_files}
+        hostname = socket.gethostname()
+        j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
+        debug("sending payload to server: %s" % j)
+        res = requests.post("http://%s/refresh" % self.central_server, data=j, headers={
+            'Content-Type': 'application/json'
+        })
+        if res is not 200:
+            warn("Couldn't update central server! %s", res)
+        else:
+            info("Updated central server")
+        pass
+
     def get_central_files(self):
         try:
             files = requests.get('http://%s/' % self.central_server)
@@ -56,6 +77,11 @@ class NapsterFilesystem(Operations):
             return files
 
     def getattr(self, path, fd):
+        if time.time() - self.last_refreshed > 5:
+            debug("refreshing stale server...")
+            self.refresh_files()
+            self.last_refreshed = time.time()
+
         debug("getattr on %s" % path)
         uid, gid, _ = fuse_get_context()
         if path == '/':
