@@ -1,0 +1,3 @@
+virtualenv pip
+source pip/bin/activate
+pip install -r requirements.txt
