@@ -66,8 +66,8 @@ class NapsterFilesystem(Operations):
     be reflected in this directory.
     """
 
-    def __init__(self, dir, central):
-        self.local = realpath(dir)
+    def __init__(self, l_dir, central):
+        self.local = realpath(l_dir)
 
         self.created = time.time()
         self.central_server = central
@@ -135,8 +135,9 @@ class NapsterFilesystem(Operations):
                                 st_ctime=self.created,
                                 st_mtime=self.created,
                                 st_atime=self.created,
-                                st_uid=65534, # nobody
-                                st_gid=65534, # nobody
+                                # nobody
+                                st_uid=65534,
+                                st_gid=65534,
                                 st_nlink=2)
                 else:
                     raise FuseOSError(errno.ENOENT)
@@ -233,10 +234,10 @@ def sha1(path):
 
 
 # repeatedly refreshes server state while we're alive
-def refresh(dir, central, port):
-    local_files = os.listdir(dir)
+def refresh(l_dir, central, port):
+    local_files = os.listdir(l_dir)
 
-    payload = {f: sha1(dir + "/" + f) for f in local_files}
+    payload = {f: sha1(l_dir + "/" + f) for f in local_files}
     peer_addr = "%s:%s" % (socket.getfqdn(), port)
 
     j = json.dumps(dict(PEER=peer_addr, files=payload))
