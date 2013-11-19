@@ -26,7 +26,7 @@ class Forgetful_Cache:
                 timer.start()
             else:
                 self.cache[filekey] = value
-                threading.Timer(
+                timer = threading.Timer(
                     self.timeout, self._purge, [filekey, peer])
                 timer.start()
 
@@ -40,7 +40,8 @@ class Forgetful_Cache:
                     print "removing peer"
                     self.cache[filekey]['peers'].pop(
                         self.cache[filekey]['peers'].index(peer))
-            else:
+
+            if len(self.cache[filekey]['peers']):
                 print "removing file"
                 self.cache.pop(filekey, None)
 
