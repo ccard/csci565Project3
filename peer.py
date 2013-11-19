@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class NapsterFilesystem(Operations):
+
     """
     Essentially a union filsystem between a local directory and the
     central server.
@@ -51,7 +52,8 @@ class NapsterFilesystem(Operations):
         local_files = os.listdir(self.local)
         payload = {f: "fake hash" for f in local_files}
         hostname = socket.gethostname()
-        j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
+        j = json.dumps(dict(PEER="%s.mines.edu:6667" %
+                       hostname, files=payload))
         debug("sending payload to server: %s" % j)
         res = requests.post("http://%s/refresh" % self.central_server, data=j, headers={
             'Content-Type': 'application/json'
@@ -113,12 +115,11 @@ class NapsterFilesystem(Operations):
                             st_ctime=self.created,
                             st_mtime=self.created,
                             st_atime=self.created,
-                            st_uid=65534, # nobody
-                            st_gid=65534, # nobody
+                            st_uid=65534,  # nobody
+                            st_gid=65534,  # nobody
                             st_nlink=2)
             else:
                 raise FuseOSError(errno.ENOENT)
-
 
     # TODO cache files back in local directory if remote
     def open(self, path, flags):
@@ -139,10 +140,12 @@ class NapsterFilesystem(Operations):
             try:
                 file = requests.get("http://%s/%s" % (peer, filename))
             except requests.ConnectionError as e:
-                error("File %s could not be downloaded from %s: %s" % (filename, peer, e))
+                error("File %s could not be downloaded from %s: %s" %
+                      (filename, peer, e))
                 raise FuseOSError(errno.ENOENT)
             if file.status_code is not 200:
-                warn("File %s could not be downloaded from %s " % (filename, peer))
+                warn("File %s could not be downloaded from %s " %
+                     (filename, peer))
                 raise FuseOSError(errno.ENOENT)
             else:
                 info("downloaded %s from peer %s" % (filename, peer))
