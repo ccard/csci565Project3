@@ -17,16 +17,16 @@ class Forgetful_Cache:
     def insert(self, key, value, peer):
         with self.lock:
             if key in self.cache:
-				if (peer not in self.cache[key]['peers'] and
-                                        value['sha1'] == self.cache[key]['sha1']):
-					self.cache[key]['peers'].append(peer)
+                if (peer not in self.cache[key]['peers'] and
+                   value['sha1'] == self.cache[key]['sha1']):
+                    self.cache[key]['peers'].append(peer)
 
                 threading.Timer(
                     self.timeout, self._purge, [key, peer])
             else:
                 self.cache[key] = value
                 threading.Timer(
-                	self.timeout, self._purge, [key,peer])
+                    self.timeout, self._purge, [key, peer])
 
     def _purge(self, key, peer):
         with self.lock:
@@ -34,8 +34,8 @@ class Forgetful_Cache:
                 return
             if len(self.cache[key]['peers']):
                 if peer in self.cache[key]['peers']:
-                	self.cache[key]['peers'].pop(
-                		self.cache[key]['peers'].index(peer))
+                    self.cache[key]['peers'].pop(
+                        self.cache[key]['peers'].index(peer))
             else:
                 self.cache.pop(key, None)
 
