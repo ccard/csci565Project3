@@ -12,7 +12,8 @@ from sys import argv, exit
 from logging.config import dictConfig
 
 import requests
-from twisted.internet import reactor
+import treq
+from twisted.internet import reactor, task
 from twisted.web.static import File
 from twisted.web.server import Site
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
@@ -23,7 +24,7 @@ dictConfig({
     'formatters': {
         'colored': {
             '()': 'colorlog.ColoredFormatter',
-            'format': "%(log_color)s%(levelname)-8s %(message)s",
+            'format': "%(log_color)s%(asctime)s %(levelname)-8s %(message)s",
             'datefmt': "%H:%M:%S",
         }
     },
@@ -69,24 +70,6 @@ class NapsterFilesystem(Operations):
         self.central_files = self.get_central_files()
         self.last_fetched = time.time()
 
-        # upload file list to refresh master server
-        self.refresh_files()
-        self.last_refreshed = time.time()
-
-    def refresh_files(self):
-        local_files = os.listdir(self.local)
-        payload = {f: "fake hash" for f in local_files}
-        hostname = socket.gethostname()
-        j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
-        log.debug("sending payload to server: %s" % j)
-        res = requests.post("http://%s/refresh" % self.central_server, data=j, headers={
-            'Content-Type': 'application/json'
-        })
-        if res is not 200:
-            log.warn("Couldn't update central server! %s", res)
-        else:
-            log.info("Updated central server")
-        pass
 
     def get_central_files(self):
         try:
@@ -104,11 +87,6 @@ class NapsterFilesystem(Operations):
 
     #noinspection PyMethodOverriding
     def getattr(self, path, fd):
-        if time.time() - self.last_refreshed > 5:
-            log.debug("refreshing stale server...")
-            self.refresh_files()
-            self.last_refreshed = time.time()
-
         log.debug("getattr on %s" % path)
         uid, gid, _ = fuse_get_context()
         if path == '/':
@@ -208,6 +186,27 @@ class NapsterFilesystem(Operations):
         return os.close(fh)
 
 
+# repeatedly refreshes server state while we're alive
+def refresh(local_dir, central_server):
+    local_files = os.listdir(local_dir)
+
+    payload = {f: "fake hash" for f in local_files}
+    hostname = socket.gethostname()
+
+    j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
+    log.debug("sending payload to server: %s" % j)
+
+    def process(res):
+        if res.code is not 204:
+            log.warn("Couldn't update central server! %s", res.code)
+        else:
+            log.info("Updated central server.")
+
+    treq.post("http://%s/refresh" % central_server,
+              data=j,
+              headers={'Content-Type': ['application/json']}).addCallback(process)
+
+
 if __name__ == "__main__":
     if len(argv) != 3:
         print('usage: %s <local directory> <mountpoint>' % argv[0])
@@ -224,14 +223,20 @@ if __name__ == "__main__":
     factory = Site(resource)
     reactor.listenTCP(6666, factory)
 
-    print "Starting HTTP file server..."
+    print "Starting twisted event loop..."
 
     # run reactor in separate thread, since FUSE is going to
     # block the main thread
-    t = threading.Thread(target=reactor.run, args=(False,))
+    def start_loop():
+        refresh(local, "localhost:6667")
+        l = task.LoopingCall(refresh, local, "localhost:6667")
+        l.start(5.0)
+        reactor.run(False)
+
+    t = threading.Thread(target=start_loop)
     t.start()
 
-    print "File server started."
+    print "Twisted loop started in separate thread."
     print "Now starting FUSE filesystem..."
 
     # run fuse main loop, this will block until unmounted or killed
