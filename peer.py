@@ -48,6 +48,10 @@ dictConfig({
 log = logging.getLogger("default")
 
 
+def byte_sha1(content):
+    return hashlib.sha1(content).hexdigest()
+
+
 class NapsterFilesystem(Operations):
     """
     Essentially a union filesystem between a local directory and the
@@ -62,11 +66,11 @@ class NapsterFilesystem(Operations):
     be reflected in this directory.
     """
 
-    def __init__(self, local_dir):
-        self.local = realpath(local_dir)
+    def __init__(self, dir, central):
+        self.local = realpath(dir)
 
         self.created = time.time()
-        self.central_server = "localhost:6667"
+        self.central_server = central
 
         self.central_files = self.get_central_files()
         self.last_fetched = time.time()
@@ -79,10 +83,10 @@ class NapsterFilesystem(Operations):
         try:
             files = requests.get('http://%s/' % self.central_server)
         except requests.ConnectionError as e:
-            log.warn("Couldn't get files from central server: %s" % e)
+            log.error("Couldn't get files from central server: %s" % e)
             return {}
         if files.status_code is not 200:
-            log.warn("Couldn't get files from central server: %s" % files)
+            log.error("Couldn't get files from central server: %s" % files)
             return {}
         else:
             files = files.json()
@@ -158,13 +162,20 @@ class NapsterFilesystem(Operations):
             log.debug("Downloading remote file %s" % path)
             # TODO try different peer if not succeeds
             peer = self.central_files[filename]["peers"][0]
+            sha = self.central_files[filename]["sha1"]
             try:
                 remote_file = requests.get("http://%s/%s" % (peer, filename))
+                received_sha = byte_sha1(remote_file.content)
             except requests.ConnectionError as e:
                 log.error("File %s could not be downloaded from %s: %s" % (filename, peer, e))
                 raise FuseOSError(errno.ENOENT)
+
             if remote_file.status_code is not 200:
-                log.warn("File %s could not be downloaded from %s " % (filename, peer))
+                log.error("File %s could not be downloaded from %s " % (filename, peer))
+                raise FuseOSError(errno.ENOENT)
+            elif received_sha is not sha:
+                log.error("File %s downloaded from %s doesn't match hash %s (got %s)!" %
+                          (filename, peer, sha, received_sha))
                 raise FuseOSError(errno.ENOENT)
             else:
                 log.info("downloaded %s from peer %s" % (filename, peer))
@@ -222,13 +233,13 @@ def sha1(path):
 
 
 # repeatedly refreshes server state while we're alive
-def refresh(local_dir, central_server):
-    local_files = os.listdir(local_dir)
+def refresh(dir, central, port):
+    local_files = os.listdir(dir)
 
-    payload = {f: sha1(local_dir + "/" + f) for f in local_files}
-    hostname = socket.gethostname()
+    payload = {f: sha1(dir + "/" + f) for f in local_files}
+    peer_addr = "%s:%s" % (socket.getfqdn(), port)
 
-    j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
+    j = json.dumps(dict(PEER=peer_addr, files=payload))
     log.debug("sending payload to server: %s" % j)
 
     def process(res):
@@ -237,7 +248,7 @@ def refresh(local_dir, central_server):
         else:
             log.info("Updated central server.")
 
-    post = treq.post("http://%s/refresh" % central_server,
+    post = treq.post("http://%s/refresh" % central,
                      data=j,
                      headers={'Content-Type': ['application/json']},
                      timeout=4)
@@ -246,30 +257,28 @@ def refresh(local_dir, central_server):
 
 
 if __name__ == "__main__":
-    if len(argv) != 3:
-        print('usage: %s <local directory> <mountpoint>' % argv[0])
+    if len(argv) != 5:
+        print('usage: %s <central server> <local directory> <mountpoint> <local port>' % argv[0])
         exit(1)
 
-    local = argv[1]
-    mountpoint = argv[2]
+    _, central_server, local_dir, mount_point, local_port = argv
 
     # serve files from the local directory over HTTP
     # TODO subclass Site to add count of open connections to be able to
     # track "load" as defined by the project. Will also need to
     # do callFromThread from the FUSE stuff in order to track downloads.
-    resource = File(realpath(local))
+    resource = File(realpath(local_dir))
     factory = Site(resource)
-    reactor.listenTCP(6666, factory)
+    reactor.listenTCP(int(local_port), factory)
 
     print "Starting twisted event loop..."
 
     # run reactor in separate thread, since FUSE is going to
     # block the main thread
     def start_loop():
-        refresh(local, "localhost:6667")
-        l = task.LoopingCall(refresh, local, "localhost:6667")
+        l = task.LoopingCall(refresh, local_dir, central_server, local_port)
         l.start(5.0)
-        reactor.run(False)
+        reactor.run(installSignalHandlers=0)
 
     t = threading.Thread(target=start_loop)
     t.start()
@@ -278,7 +287,7 @@ if __name__ == "__main__":
     print "Now starting FUSE filesystem..."
 
     # run fuse main loop, this will block until unmounted or killed
-    FUSE(NapsterFilesystem(local), mountpoint, foreground=True)
+    FUSE(NapsterFilesystem(local_dir, central_server), mount_point, foreground=True)
 
     print "FUSE received shutdown signal, shutting down reactor..."
 
