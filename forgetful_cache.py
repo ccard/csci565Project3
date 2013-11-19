@@ -32,17 +32,15 @@ class Forgetful_Cache:
 
     def _purge(self, filekey, peer):
         with self.lock:
-            print "Attempting removal:: file: %s , peer: %s" % (filekey, peer)
             if filekey not in self.cache:
                 return
+
             if len(self.cache[filekey]['peers']):
                 if peer in self.cache[filekey]['peers']:
-                    print "removing peer"
                     self.cache[filekey]['peers'].pop(
                         self.cache[filekey]['peers'].index(peer))
 
-            if len(self.cache[filekey]['peers']):
-                print "removing file"
+            if not len(self.cache[filekey]['peers']):
                 self.cache.pop(filekey, None)
 
     def __getitem__(self, filekey):
