@@ -9,7 +9,7 @@ class Forgetful_Cache:
 
     """docstring for Forgetful_Cache"""
 
-    def __init__(self, timeout=10):
+    def __init__(self, timeout=5):
         self.lock = threading.Lock()
         self.timeout = timeout
         self.cache = collections.defaultdict()
@@ -46,7 +46,7 @@ class Forgetful_Cache:
                 for peer in self.cache[fkey]['peers']:
                     currtime = time.time()
                     if ((currtime - self.timeout_log[fkey][peer]) >
-                        self.timeout):
+                            self.timeout):
                         purging[fkey].append(peer)
 
             for fkey in purging:
