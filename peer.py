@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+import hashlib
 import logging
 import os
 import errno
@@ -69,7 +70,6 @@ class NapsterFilesystem(Operations):
 
         self.central_files = self.get_central_files()
         self.last_fetched = time.time()
-
 
     def get_central_files(self):
         try:
@@ -186,11 +186,16 @@ class NapsterFilesystem(Operations):
         return os.close(fh)
 
 
+def sha1(path):
+    with open(path, "rb") as f:
+        return hashlib.sha1(f.read()).hexdigest()
+
+
 # repeatedly refreshes server state while we're alive
 def refresh(local_dir, central_server):
     local_files = os.listdir(local_dir)
 
-    payload = {f: "fake hash" for f in local_files}
+    payload = {f: sha1(local_dir + "/" + f) for f in local_files}
     hostname = socket.gethostname()
 
     j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
