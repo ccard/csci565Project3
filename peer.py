@@ -125,7 +125,7 @@ class NapsterFilesystem(Operations):
                                                              'st_uid'))
                 d["st_mode"] = (stat.S_IFREG | 0o444)  # set as readonly
                 return d
-            except IOError:
+            except OSError:
                 log.info("File %s doesn't exist locally..." % path)
 
                 filename = path[1:]
@@ -152,7 +152,7 @@ class NapsterFilesystem(Operations):
         log.debug("trying opening %s locally..." % path)
         try:
             return os.open(self.local + path, flags)
-        except IOError:
+        except OSError:
             log.info("File %s doesn't exist locally..." % path)
             pass
 
@@ -174,7 +174,7 @@ class NapsterFilesystem(Operations):
             if remote_file.status_code is not 200:
                 log.error("File %s could not be downloaded from %s " % (filename, peer))
                 raise FuseOSError(errno.ENOENT)
-            elif received_sha is not sha:
+            elif received_sha != sha:
                 log.error("File %s downloaded from %s doesn't match hash %s (got %s)!" %
                           (filename, peer, sha, received_sha))
                 raise FuseOSError(errno.ENOENT)
@@ -208,6 +208,7 @@ class NapsterFilesystem(Operations):
         local_files = os.listdir(self.local + path)
         remote_files = \
             [f for f in self.central_files.keys() if f not in local_files]
+        log.debug(remote_files)
         return ['.', '..'] + local_files + remote_files
 
     def read(self, path, size, offset, fh):
@@ -288,9 +289,11 @@ if __name__ == "__main__":
     print "Now starting FUSE filesystem..."
 
     # run fuse main loop, this will block until unmounted or killed
-    FUSE(NapsterFilesystem(local_dir, central_server), mount_point, foreground=True)
-
-    print "FUSE received shutdown signal, shutting down reactor..."
+    try:
+        FUSE(NapsterFilesystem(local_dir, central_server), mount_point, foreground=True)
+        print "FUSE received shutdown signal, shutting down reactor..."
+    except Exception as e:
+        print "Something went wrong with fuse!"
 
     reactor.callFromThread(reactor.stop)
 
