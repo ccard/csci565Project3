@@ -14,36 +14,37 @@ class Forgetful_Cache:
         self.timeout = timeout
         self.cache = collections.defaultdict
 
-    def insert(self, key, value):
+    def insert(self, key, value, peer):
         with self.lock:
             if key in self.cache:
-                self.cache[key]['status_counter'] += 1
-                threading.Timer(self.timeout, self.purge, [key])
-            else:
-                value['status_counter'] = 0
-                self.cache[key] = value
-                threading.Timer(self.timeout, self.purge, [key])
+				if (peer not in self.cache[key]['peers'] and 
+						value['sha1'] == self.cache[key]['sha1']):
+					self.cache[key]['peers'].append(peer)
 
-    def purge(self, key):
+                threading.Timer(
+                    self.timeout, self._purge, [key, peer])
+            else:
+                self.cache[key] = value
+                threading.Timer(
+                	self.timeout, self._purge, [key,peer])
+
+    def _purge(self, key, peer):
         with self.lock:
             if key not in self.cache:
                 return
-            if self.cache[key]['status_counter'] > 0:
-                self.cache[key]['status_counter'] -= 1
+            if len(self.cache[key]['peers']):
+                if peer in self.cache[key]['peers']:
+                	self.cache[key]['peers'].pop(
+                		self.cache[key]['peers'].index(peer))
             else:
                 self.cache.pop(key, None)
 
     def __getitem__(self, filekey):
         with self.lock:
             if filekey in self.cache:
-                value = self.cache[key].copy()
-                value.pop('status_counter', None)
-                return value
+                return self.cache[filekey].copy()
             else:
-                retCache = self.cache.copy()
-                for f in retCache:
-                    retCache[f].pop('status_counter', None)
-                return retCache
+                return self.cache.copy()
 
     def __len__(self):
         with self.lock:

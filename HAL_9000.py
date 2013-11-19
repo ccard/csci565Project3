@@ -4,21 +4,19 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 
+from forgetful_cache import Forgetful_Cache
+
 import json
 import sys
 
 HAL_9000 = Flask(__name__)
-cache = {}
+cache = Forgetful_Cache()
 
 
 @HAL_9000.route("/")
 def query():
     q = request.args.get('q', '')
-    file_data = cache.get(q)
-    if file_data is not None:
-        return jsonify(file_data)
-
-    return jsonify(cache)
+    return jsonify(cache[q])
 
 
 @HAL_9000.route("/refresh", methods=['POST'])
@@ -31,15 +29,7 @@ def refresh():
         cache_dict[f] = {'sha1': peer_contents[f], 'peers': [peer_name]}
 
     for f in cache_dict:
-        if f in cache:
-            file_data = cache[f]
-            if file_data['sha1'] == cache_dict[f]['sha1']:
-                if peer_name not in file_data['peers']:
-                    file_data['peers'].append(peer_name)
-
-            cache[f] = file_data
-        else:
-            cache[f] = cache_dict[f]
+        cache.insert(f, cache_dict[f], peer_name)
 
     return '', 204
 
@@ -49,5 +39,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print "./HAL_9000.py [PORT]"
         exit()
+
+    port = sys.argv[1]
 
     HAL_9000.run(host='0.0.0.0', port=port, debug=True)
