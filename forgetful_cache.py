@@ -12,32 +12,35 @@ class Forgetful_Cache:
     def __init__(self, timeout=5):
         self.lock = threading.Lock()
         self.timeout = timeout
-        self.cache = collections.defaultdict
+        self.cache = collections.defaultdict()
 
-    def insert(self, key, value, peer):
+    def insert(self, filekey, value, peer):
         with self.lock:
-            if key in self.cache:
-                if (peer not in self.cache[key]['peers'] and
-                   value['sha1'] == self.cache[key]['sha1']):
-                    self.cache[key]['peers'].append(peer)
+            if filekey in self.cache:
+                if (peer not in self.cache[filekey]['peers'] and
+                   value['sha1'] == self.cache[filekey]['sha1']):
+                    self.cache[filekey]['peers'].append(peer)
 
                 threading.Timer(
-                    self.timeout, self._purge, [key, peer])
+                    self.timeout, self._purge, [filekey, peer])
             else:
-                self.cache[key] = value
+                self.cache[filekey] = value
                 threading.Timer(
-                    self.timeout, self._purge, [key, peer])
+                    self.timeout, self._purge, [filekey, peer])
 
-    def _purge(self, key, peer):
+    def _purge(self, filekey, peer):
         with self.lock:
-            if key not in self.cache:
+            print "Attempting removal:: file: %s , peer: %s" % (filekey,peer)
+            if filekey not in self.cache:
                 return
-            if len(self.cache[key]['peers']):
-                if peer in self.cache[key]['peers']:
-                    self.cache[key]['peers'].pop(
-                        self.cache[key]['peers'].index(peer))
+            if len(self.cache[filekey]['peers']):
+                if peer in self.cache[filekey]['peers']:
+                    print "removing peer"
+                    self.cache[filekey]['peers'].pop(
+                        self.cache[filekey]['peers'].index(peer))
             else:
-                self.cache.pop(key, None)
+                print "removing file"
+                self.cache.pop(filekey, None)
 
     def __getitem__(self, filekey):
         with self.lock:
