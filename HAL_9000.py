@@ -40,6 +40,6 @@ if __name__ == "__main__":
         print "./HAL_9000.py [PORT]"
         exit()
 
-    port = sys.argv[1]
+    port = int(sys.argv[1])
 
     HAL_9000.run(host='0.0.0.0', port=port, debug=True)

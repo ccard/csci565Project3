@@ -2,7 +2,7 @@
 
 import datetime
 import collections
-import thread
+import threading
 
 
 class Forgetful_Cache:
