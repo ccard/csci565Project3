@@ -50,7 +50,7 @@ log = logging.getLogger("default")
 
 class NapsterFilesystem(Operations):
     """
-    Essentially a union filsystem between a local directory and the
+    Essentially a union filesystem between a local directory and the
     central server.
 
     The files shown in this FUSE-mounted directory are the union of local files
@@ -72,6 +72,10 @@ class NapsterFilesystem(Operations):
         self.last_fetched = time.time()
 
     def get_central_files(self):
+        """
+        Returns the set of all files available on the server, possibly including
+        our own files. The JSON response is parsed as a dict.
+        """
         try:
             files = requests.get('http://%s/' % self.central_server)
         except requests.ConnectionError as e:
@@ -87,6 +91,12 @@ class NapsterFilesystem(Operations):
 
     #noinspection PyMethodOverriding
     def getattr(self, path, fd):
+        """
+        Returns the file attributes for a given path, i.e. file type, permissions,
+        etc. If the requested file is remote, we assume that it's owned by
+        nobody, to avoid having to download all the files when a directory is listed.
+        Instead, the actual download is performed on read.
+        """
         log.debug("getattr on %s" % path)
         uid, gid, _ = fuse_get_context()
         if path == '/':
@@ -100,32 +110,40 @@ class NapsterFilesystem(Operations):
         else:
             log.debug("trying getattr %s locally..." % path)
             try:
-                st = os.lstat(self.local + path)
-                return dict((key, getattr(st, key)) for key in (
-                    'st_atime', 'st_ctime', 'st_gid', 'st_mode',
-                    'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
+                st = os.lstat(self.local + path)  # read attrs locally
+                d = dict((key, getattr(st, key)) for key in ('st_atime',
+                                                             'st_ctime',
+                                                             'st_gid',
+                                                             'st_mode',
+                                                             'st_mtime',
+                                                             'st_nlink',
+                                                             'st_size',
+                                                             'st_uid'))
+                d["st_mode"] = (stat.S_IFREG | 0o444)  # set as readonly
+                return d
             except IOError:
                 log.info("File %s doesn't exist locally..." % path)
-                pass
 
-            # try getting remote
+                filename = path[1:]
+                if filename in self.central_files:
+                    log.debug("File %s exists on central server...", filename)
+                    return dict(st_mode=(stat.S_IFREG | 0o444),
+                                st_ctime=self.created,
+                                st_mtime=self.created,
+                                st_atime=self.created,
+                                st_uid=65534, # nobody
+                                st_gid=65534, # nobody
+                                st_nlink=2)
+                else:
+                    raise FuseOSError(errno.ENOENT)
 
-            # TODO download remote if exists
-            filename = path[1:]
-            if filename in self.central_files:
-                log.debug("File %s exists on central server...", filename)
-                return dict(st_mode=(stat.S_IFREG | 0o444),
-                            st_ctime=self.created,
-                            st_mtime=self.created,
-                            st_atime=self.created,
-                            st_uid=65534, # nobody
-                            st_gid=65534, # nobody
-                            st_nlink=2)
-            else:
-                raise FuseOSError(errno.ENOENT)
-
-    # TODO cache files back in local directory if remote
     def open(self, path, flags):
+        """
+        Returns a file handle to the file at `path`.
+        For locally available files, proxy to os.open.
+        For remote files, download and cache the remote file before
+        opening the now-cached version with os.open.
+        """
         log.debug("trying opening %s locally..." % path)
         try:
             return os.open(self.local + path, flags)
@@ -162,12 +180,12 @@ class NapsterFilesystem(Operations):
         else:
             raise FuseOSError(errno.ENOENT)
 
-    def read(self, path, size, offset, fh):
-        # file handle is from os.open in `open`, so use it directly
-        os.lseek(fh, offset, 0)
-        return os.read(fh, size)
-
     def readdir(self, path, fh):
+        """
+        list files in the directory. Since we're doing a union mount,
+        we hit the central server (or use a cached version) to return the union
+        of centrally available files and our local files.
+        """
         log.debug("reading dir...")
         if (time.time() - self.last_fetched) > 5:
             log.info("central server file list is stale, refreshing...")
@@ -180,9 +198,21 @@ class NapsterFilesystem(Operations):
             [f for f in self.central_files.keys() if f not in local_files]
         return ['.', '..'] + local_files + remote_files
 
+    def read(self, path, size, offset, fh):
+        """
+        Read bytes from a file handle.
+        File handle is from os.open in `open` i.e. is a real file handle,
+        so use it directly.
+        """
+        os.lseek(fh, offset, 0)
+        return os.read(fh, size)
+
     def release(self, path, fh):
-        log.debug("Releasing file descriptor for %s" % path)
-        # file handle is real, use it
+        """
+        Release an open file handle.
+        File handle is from os.open in `open` i.e. is a real file handle,
+        so close it directly.
+        """
         return os.close(fh)
 
 
@@ -203,13 +233,16 @@ def refresh(local_dir, central_server):
 
     def process(res):
         if res.code is not 204:
-            log.warn("Couldn't update central server! %s", res.code)
+            log.error("Couldn't update central server! %s", res.code)
         else:
             log.info("Updated central server.")
 
-    treq.post("http://%s/refresh" % central_server,
-              data=j,
-              headers={'Content-Type': ['application/json']}).addCallback(process)
+    post = treq.post("http://%s/refresh" % central_server,
+                     data=j,
+                     headers={'Content-Type': ['application/json']},
+                     timeout=4)
+    post.addCallback(process)
+    post.addErrback(log.error)
 
 
 if __name__ == "__main__":
