@@ -9,7 +9,7 @@ import stat
 import json
 from os.path import realpath
 from sys import argv, exit
-from logging import debug, info, warn, error
+from logging.config import dictConfig
 
 import requests
 from twisted.internet import reactor
@@ -17,7 +17,33 @@ from twisted.web.static import File
 from twisted.web.server import Site
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 
-logging.basicConfig(level=logging.DEBUG)
+dictConfig({
+    'version': 1,
+
+    'formatters': {
+        'colored': {
+            '()': 'colorlog.ColoredFormatter',
+            'format': "%(log_color)s%(levelname)-8s %(message)s",
+            'datefmt': "%H:%M:%S",
+        }
+    },
+
+    'handlers': {
+        'stream': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'colored',
+        },
+    },
+
+    'loggers': {
+        'default': {
+            'handlers': ['stream'],
+            'level': 'DEBUG',
+        },
+    },
+})
+
+log = logging.getLogger("default")
 
 
 class NapsterFilesystem(Operations):
@@ -38,7 +64,7 @@ class NapsterFilesystem(Operations):
         self.local = realpath(local)
 
         self.created = time.time()
-        self.central_server = "bb136-10.mines.edu:6667"
+        self.central_server = "localhost:6667"
 
         self.central_files = self.get_central_files()
         self.last_fetched = time.time()
@@ -52,37 +78,37 @@ class NapsterFilesystem(Operations):
         payload = {f: "fake hash" for f in local_files}
         hostname = socket.gethostname()
         j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
-        debug("sending payload to server: %s" % j)
+        log.debug("sending payload to server: %s" % j)
         res = requests.post("http://%s/refresh" % self.central_server, data=j, headers={
             'Content-Type': 'application/json'
         })
         if res is not 200:
-            warn("Couldn't update central server! %s", res)
+            log.warn("Couldn't update central server! %s", res)
         else:
-            info("Updated central server")
+            log.info("Updated central server")
         pass
 
     def get_central_files(self):
         try:
             files = requests.get('http://%s/' % self.central_server)
         except requests.ConnectionError as e:
-            warn("Couldn't get files from central server: %s" % e)
+            log.warn("Couldn't get files from central server: %s" % e)
             return {}
         if files.status_code is not 200:
-            warn("Couldn't get files from central server: %s" % files)
+            log.warn("Couldn't get files from central server: %s" % files)
             return {}
         else:
             files = files.json()
-            info("Received files from central server: %s", files)
+            log.info("Received files from central server: %s", files)
             return files
 
     def getattr(self, path, fd):
         if time.time() - self.last_refreshed > 5:
-            debug("refreshing stale server...")
+            log.debug("refreshing stale server...")
             self.refresh_files()
             self.last_refreshed = time.time()
 
-        debug("getattr on %s" % path)
+        log.debug("getattr on %s" % path)
         uid, gid, _ = fuse_get_context()
         if path == '/':
             return dict(st_mode=(stat.S_IFDIR | 0o444),
@@ -93,14 +119,14 @@ class NapsterFilesystem(Operations):
                         st_gid=gid,
                         st_nlink=2)
         else:
-            debug("trying getattr %s locally..." % path)
+            log.debug("trying getattr %s locally..." % path)
             try:
                 st = os.lstat(self.local + path)
                 return dict((key, getattr(st, key)) for key in (
                     'st_atime', 'st_ctime', 'st_gid', 'st_mode',
                     'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
             except IOError:
-                info("File %s doesn't exist locally..." % path)
+                log.info("File %s doesn't exist locally..." % path)
                 pass
 
             # try getting remote
@@ -108,7 +134,7 @@ class NapsterFilesystem(Operations):
             # TODO download remote if exists
             filename = path[1:]
             if filename in self.central_files:
-                debug("File %s exists on central server...", filename)
+                log.debug("File %s exists on central server...", filename)
                 return dict(st_mode=(stat.S_IFREG | 0o444),
                             st_ctime=self.created,
                             st_mtime=self.created,
@@ -119,39 +145,38 @@ class NapsterFilesystem(Operations):
             else:
                 raise FuseOSError(errno.ENOENT)
 
-
     # TODO cache files back in local directory if remote
     def open(self, path, flags):
-        debug("trying opening %s locally..." % path)
+        log.debug("trying opening %s locally..." % path)
         try:
             return os.open(self.local + path, flags)
         except IOError:
-            info("File %s doesn't exist locally..." % path)
+            log.info("File %s doesn't exist locally..." % path)
             pass
 
         # now try downloading it
 
         filename = path[1:]
         if filename in self.central_files:
-            debug("Downloading remote file %s" % path)
+            log.debug("Downloading remote file %s" % path)
             # TODO try different peer if not succeeds
             peer = self.central_files[filename]["peers"][0]
             try:
                 file = requests.get("http://%s/%s" % (peer, filename))
             except requests.ConnectionError as e:
-                error("File %s could not be downloaded from %s: %s" % (filename, peer, e))
+                log.error("File %s could not be downloaded from %s: %s" % (filename, peer, e))
                 raise FuseOSError(errno.ENOENT)
             if file.status_code is not 200:
-                warn("File %s could not be downloaded from %s " % (filename, peer))
+                log.warn("File %s could not be downloaded from %s " % (filename, peer))
                 raise FuseOSError(errno.ENOENT)
             else:
-                info("downloaded %s from peer %s" % (filename, peer))
+                log.info("downloaded %s from peer %s" % (filename, peer))
                 # copy file to local dir
-                debug("Writing file to %s" % (self.local + path))
+                log.debug("Writing file to %s" % (self.local + path))
                 local_file = open(self.local + path, 'w')
                 local_file.write(file.content)
                 local_file.close()
-                debug("saved %s from peer %s" % (filename, peer))
+                log.debug("saved %s from peer %s" % (filename, peer))
 
                 # now read it
                 return os.open(self.local + path, flags)
@@ -164,12 +189,12 @@ class NapsterFilesystem(Operations):
         return os.read(fh, size)
 
     def readdir(self, path, fh):
-        debug("reading dir...")
+        log.debug("reading dir...")
         if (time.time() - self.last_fetched) > 5:
-            info("central server file list is stale, refreshing...")
+            log.info("central server file list is stale, refreshing...")
             self.central_files = self.get_central_files()
             self.last_fetched = time.time()
-            info("Central server file list refreshed.")
+            log.info("Central server file list refreshed.")
 
         local_files = os.listdir(self.local + path)
         remote_files = \
@@ -177,7 +202,7 @@ class NapsterFilesystem(Operations):
         return ['.', '..'] + local_files + remote_files
 
     def release(self, path, fh):
-        debug("Releasing file descriptor for %s" % path)
+        log.debug("Releasing file descriptor for %s" % path)
         # file handle is real, use it
         return os.close(fh)
 
