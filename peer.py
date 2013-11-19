@@ -60,8 +60,8 @@ class NapsterFilesystem(Operations):
     be reflected in this directory.
     """
 
-    def __init__(self, local):
-        self.local = realpath(local)
+    def __init__(self, local_dir):
+        self.local = realpath(local_dir)
 
         self.created = time.time()
         self.central_server = "localhost:6667"
@@ -102,6 +102,7 @@ class NapsterFilesystem(Operations):
             log.info("Received files from central server: %s", files)
             return files
 
+    #noinspection PyMethodOverriding
     def getattr(self, path, fd):
         if time.time() - self.last_refreshed > 5:
             log.debug("refreshing stale server...")
@@ -162,11 +163,11 @@ class NapsterFilesystem(Operations):
             # TODO try different peer if not succeeds
             peer = self.central_files[filename]["peers"][0]
             try:
-                file = requests.get("http://%s/%s" % (peer, filename))
+                remote_file = requests.get("http://%s/%s" % (peer, filename))
             except requests.ConnectionError as e:
                 log.error("File %s could not be downloaded from %s: %s" % (filename, peer, e))
                 raise FuseOSError(errno.ENOENT)
-            if file.status_code is not 200:
+            if remote_file.status_code is not 200:
                 log.warn("File %s could not be downloaded from %s " % (filename, peer))
                 raise FuseOSError(errno.ENOENT)
             else:
@@ -174,7 +175,7 @@ class NapsterFilesystem(Operations):
                 # copy file to local dir
                 log.debug("Writing file to %s" % (self.local + path))
                 local_file = open(self.local + path, 'w')
-                local_file.write(file.content)
+                local_file.write(remote_file.content)
                 local_file.close()
                 log.debug("saved %s from peer %s" % (filename, peer))
 
