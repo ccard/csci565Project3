@@ -21,16 +21,18 @@ class Forgetful_Cache:
                    value['sha1'] == self.cache[filekey]['sha1']):
                     self.cache[filekey]['peers'].append(peer)
 
-                threading.Timer(
+                timer = threading.Timer(
                     self.timeout, self._purge, [filekey, peer])
+                timer.start()
             else:
                 self.cache[filekey] = value
                 threading.Timer(
                     self.timeout, self._purge, [filekey, peer])
+                timer.start()
 
     def _purge(self, filekey, peer):
         with self.lock:
-            print "Attempting removal:: file: %s , peer: %s" % (filekey,peer)
+            print "Attempting removal:: file: %s , peer: %s" % (filekey, peer)
             if filekey not in self.cache:
                 return
             if len(self.cache[filekey]['peers']):
