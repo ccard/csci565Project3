@@ -53,7 +53,6 @@ def byte_sha1(content):
 
 
 class NapsterFilesystem(Operations):
-
     """
     Essentially a union filesystem between a local directory and the
     central server.
@@ -75,25 +74,6 @@ class NapsterFilesystem(Operations):
 
         self.central_files = self.get_central_files()
         self.last_fetched = time.time()
-
-        # upload file list to refresh master server
-        self.refresh_files()
-        self.last_refreshed = time.time()
-
-    def refresh_files(self):
-        local_files = os.listdir(self.local)
-        payload = {f: "fake hash" for f in local_files}
-        hostname = socket.gethostname()
-        j = json.dumps(dict(PEER="%s.mines.edu:6667" % hostname, files=payload))
-        debug("sending payload to server: %s" % j)
-        res = requests.post("http://%s/refresh" % self.central_server, data=j, headers={
-            'Content-Type': 'application/json'
-        })
-        if res is not 200:
-            warn("Couldn't update central server! %s", res)
-        else:
-            info("Updated central server")
-        pass
 
     def get_central_files(self):
         """
@@ -161,21 +141,6 @@ class NapsterFilesystem(Operations):
                                 st_nlink=2)
                 else:
                     raise FuseOSError(errno.ENOENT)
-
-            # TODO download remote if exists
-            filename = path[1:]
-            if filename in self.central_files:
-                debug("File %s exists on central server...", filename)
-                return dict(st_mode=(stat.S_IFREG | 0o444),
-                            st_ctime=self.created,
-                            st_mtime=self.created,
-                            st_atime=self.created,
-                            st_uid=65534, # nobody
-                            st_gid=65534, # nobody
-                            st_nlink=2)
-            else:
-                raise FuseOSError(errno.ENOENT)
-
 
     # TODO cache files back in local directory if remote
     def open(self, path, flags):
