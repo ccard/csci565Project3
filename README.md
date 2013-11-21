@@ -53,3 +53,8 @@ This section documents our user stories that we want to test as well as the resu
  - Ensure downloaders can still download even if the tracking server is down.
  - Continue running regardless of the state of the other uploaders/downloaders and the
   tracking server.
+
+### Tests
+The tests [features](features/find.feature) are defined in their own file 
+using [lettuce](http://lettuce.it/). The tests are then implemented in the [steps](features/step.py)
+file.  To run the tests use the command `lettuce` in the parent directory and watch the magic happen.
