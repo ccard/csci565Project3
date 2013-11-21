@@ -3,6 +3,7 @@ from subprocess import Popen, PIPE
 import os
 import sys
 import re
+import tempfile
 
 
 @step('running central server')
@@ -14,7 +15,11 @@ def running_central_server(step):
 
 @step('peer hosting files')
 def peer_hosting_files(step):
-    
+    world.mount_point = tempfile.mkdtemp()
+    world.local_dir = tempfile.mkdtemp()
+
+    for i in range(1, 5):
+        open(world.local_dir + "/f" + repr(i) + ".txt", 'a').close()
 
 
 @step('I can connect to the central server')
