@@ -7,11 +7,15 @@ Werkzeug==0.9.4
 argparse==1.2.1
 autopep8==0.9.6
 colorlog==2.0.0
+distribute==0.6.24
 fusepy==2.0.2
+fuzzywuzzy==0.2
 httpie==0.7.2
 itsdangerous==0.23
+lettuce==0.2.19
 pep8==1.4.6
 requests==2.0.1
+sure==1.2.2
 treq==0.2.0
 wsgiref==0.1.2
 zope.interface==4.0.5
