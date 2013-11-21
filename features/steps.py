@@ -4,6 +4,8 @@ import os
 import sys
 import re
 import tempfile
+import time
+import requests
 
 
 @step('running central server')
@@ -21,17 +23,34 @@ def peer_hosting_files(step):
     for i in range(1, 5):
         open(world.local_dir + "/f" + repr(i) + ".txt", 'a').close()
 
+    world.peer_uploader = Popen(
+        ['./peer.py', 'localhost:6667',
+            world.local_dir, world.mount_point, '6666'],
+        stderr=PIPE, stdout=PIPE)
+
+    time.sleep(3)
+
 
 @step('I can connect to the central server')
 def can_I_connect(step):
-    print "yes yes I can"
+    r = requests.head("http://localhost:6667")
+    assert r.status_code == 200
 
 
 @step('Then I see that peers files')
 def sea_files(step):
-    print "i am getting sea sick"
+    r = requests.get("http://localhost:6667")
+    r = r.json()
+    for f in range(1, 5):
+        fname = "f%s.txt" % repr(f)
+        assert fname in r
 
 
 @after.all
 def cleanup(total):
+    print "server %d" % world.server.pid
     world.server.terminate()
+    world.server.wait()
+    print "peer %d" % world.server.pid
+    world.peer_uploader.terminate()
+    world.peer_uploader.wait()
