@@ -1,4 +1,34 @@
 #! /usr/bin/env python
+"""
+Project 3 (NapsterFS) peer. Shares local files with
+other peers as well as exposes remote files as a local
+folder for download, using the central (HAL_9000) server
+for discovery.
+
+Usage:
+  peer.py CENTRAL-SERVER LOCAL-PATH MOUNT-PATH LOCAL-PORT
+  peer.py (-h | --help)
+
+Arguments:
+  CENTRAL-SERVER  Address of the central server as "hostname:port".
+  LOCAL-PATH      Local directory of files to be shared. The directory
+                  MUST NOT contain any subdirectories and MUST be
+                  writable. Any remote files downloaded will be
+                  written to this directory for availability after
+                  the peer is closed.
+  MOUNT-PATH      Empty directory to which the view of available files
+                  will be mounted. The directory will be populated with
+                  both locally-available files and remote files.
+                  Accessing a remote file will result in that file
+                  being downloaded and cached in the LOCAL-PATH.
+  LOCAL-PORT      Unused port to which to bind. Local files are shared
+                  to other peers over HTTP on this port, so it must
+                  be accessible to other peers.
+
+Options:
+  -h --help     Show this screen.
+
+"""
 import hashlib
 import logging
 import os
@@ -10,15 +40,16 @@ import threading
 import stat
 import json
 from os.path import realpath
-from sys import argv, exit
 from logging.config import dictConfig
 
+from docopt import docopt
 import requests
 import treq
 from twisted.internet import reactor, task
 from twisted.web.static import File
 from twisted.web.server import Site
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+
 
 dictConfig({
     'version': 1,
@@ -273,11 +304,11 @@ def refresh(l_dir, central, port):
 
 
 if __name__ == "__main__":
-    if len(argv) != 5:
-        print('usage: %s <central server> <local directory> <mountpoint> <local port>' % argv[0])
-        exit(1)
-
-    _, central_server, local_dir, mount_point, local_port = argv
+    args = docopt(__doc__)
+    central_server = args['CENTRAL-SERVER']
+    local_dir = args['LOCAL-PATH']
+    mount_point = args['MOUNT-PATH']
+    local_port = args['LOCAL-PORT']
 
     # serve files from the local directory over HTTP
     resource = File(realpath(local_dir))
