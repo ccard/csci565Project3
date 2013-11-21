@@ -42,4 +42,4 @@ if __name__ == "__main__":
 
     port = int(sys.argv[1])
 
-    HAL_9000.run(host='0.0.0.0', port=port, debug=True)
+    HAL_9000.run(host='0.0.0.0', port=port)
