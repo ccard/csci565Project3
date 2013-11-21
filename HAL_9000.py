@@ -4,7 +4,7 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 
-from forgetful_cache import Forgetful_Cache
+from forgetful_cache import ForgetfulCache
 
 import json
 import sys
