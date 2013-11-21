@@ -8,4 +8,10 @@ Feature: Request file
 		And peer hosting files
 		When I can connect to the central server
 		Then I see that peers files
-		
+
+	Scenario: Download uncorrupted file
+		Given running central server
+		And peer hosting files
+		When I can connect to the central server
+		Then I see that peers files
+		Then see if I can open the file
