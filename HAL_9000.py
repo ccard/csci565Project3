@@ -10,7 +10,7 @@ import json
 import sys
 
 HAL_9000 = Flask(__name__)
-cache = Forgetful_Cache()
+cache = ForgetfulCache()
 
 
 @HAL_9000.route("/")
