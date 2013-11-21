@@ -23,7 +23,8 @@ that our program requires to run.
 ## Execution
 
 ### Environment Setup
-Our program requires severl python modules that are not installed on the school computers.  To do this run command:
+Our program requires severl python modules that are not installed on the school computers.  
+To do this run command:
 ```
 source environment
 ```
@@ -35,3 +36,20 @@ source environment
 #### Tracking Server
 To start the tracking server run command `./HAL_9000.py [PORT] &`
 to kill the tracking server run ps and kill the python task
+
+## Testing
+This section documents our user stories that we want to test as well as the results from our tests
+### User Stories
+- **Downloaders**:
+ - Wishes to find a specified file on the system or find all the files that
+  they can download from the system.
+ - Would also like to download an uncorrupted version of the file.
+ - Would like to be able to down load the file if the uploader is available.
+ - Continue to run their client even if the tracking server or other 
+   uploaders/downloaders are down.
+- **Uploaders**:
+ - Ensure that the tracking server eventually has the most recent snapshot of the files it is
+  serving.
+ - Ensure downloaders can still download even if the tracking server is down.
+ - Continue running regardless of the state of the other uploaders/downloaders and the
+  tracking server.
