@@ -32,6 +32,19 @@ source environment
 ### Running the Peer Nodes and Tracking Server
 
 #### Peer Node
+##### A Littlebit of Setup
+To setup the MOUNT-DIR create a new directory in `/tmp/<your dir name>` replacing `<your dir name>` with a unique name.
+The MOUNT-DIR you just created will be used as the mounting point when starting the peer node below. The LOCAL-DIR is the
+path to the directory of files that you wish your peer to notifiy the tracking server that it is willing to upload them.
+This can be an exisitng directory or it can be one that you create your self.
+
+##### Using the Peer Node
+To start the peer node run command `./peer.py CENTRAL-SERVER LOCAL-PATH MOUNT-PATH LOCAL-PORT`. To get more
+details on what the different parameters are run `./peer.py [-h | --help]`. The MOUNT-PATH now contains all files
+that other peers in this system are willing to upload to find. To find the files in the system use `ls MOUNT-DIR`.
+When you want to download a specific file just perform any file system operation that reads the file.
+For example `cat <the file name>`, `less <the file name>` or even `vim <the file name>`.
+
 
 #### Tracking Server
 To start the tracking server run command `./HAL_9000.py [PORT] &`
