@@ -34,7 +34,7 @@ def run_peer(name, files=None):
 
     state["process"] = Popen(
         ['./peer.py', 'localhost:6667',
-         local_dir, mount_point, '0'],)
+         local_dir, mount_point, '0'],
         stderr=PIPE, stdout=PIPE)
 
     # wait for process to spin up
