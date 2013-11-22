@@ -69,5 +69,5 @@ This section documents our user stories that we want to test as well as the resu
 
 ### Tests
 The tests [features](features/find.feature) are defined in their own file 
-using [lettuce](http://lettuce.it/). The tests are then implemented in the [steps](features/step.py)
+using [lettuce](http://lettuce.it/). The tests are then implemented in the [steps](features/steps.py)
 file.  To run the tests use the command `lettuce` in the parent directory and watch the magic happen.
