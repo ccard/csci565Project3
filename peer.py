@@ -209,10 +209,6 @@ class NapsterFilesystem(Operations):
             try:
                 remote_file = requests.get("http://%s/%s" % (peer, filename))
 
-                # In this system, each peer has a fake latency between
-                # 100ms-5000ms, which just so happens to be 100ms for all peers.
-                time.sleep(0.1)
-
                 received_sha = byte_sha1(remote_file.content)
             except requests.ConnectionError as c_err:
                 log.error("File %s could not be downloaded from %s: %s" % (filename, peer, c_err))
@@ -229,9 +225,31 @@ class NapsterFilesystem(Operations):
                 log.info("downloaded %s from peer %s" % (filename, peer))
                 # copy file to local dir
                 log.debug("Writing file to %s" % (self.local + path))
-                local_file = open(self.local + path, 'w')
-                local_file.write(remote_file.content)
-                local_file.close()
+                
+                try:
+                    with open(self.local + path, 'w') as local_file:
+                       local_file.write(remote_file.content)
+                       local_file.flush()
+                       os.fsync(local_file)
+
+                    with open(self.local + path, 'r') as local_file:
+                       c = local_file.read()
+                       assert c == remote_file.content
+
+                       log.debug("written %s from peer %s" % (filename, peer))
+
+                except Exception, e:
+                    log.error(e)
+                
+
+                log.debug("sleeping, %s from peer %s" % (filename, peer))
+                # In this system, each peer has a fake latency between
+                # 100ms-5000ms, which just so happens to be 1000ms for all peers.
+                time.sleep(1)
+                # XXX also, for some reason, the tests can't read the contents
+                # of file we just wrote _unless_ we sleep here for 1 second (on
+                # some machines). This is bizarre, we don't understand it.
+
                 log.debug("saved %s from peer %s" % (filename, peer))
 
                 # now read it

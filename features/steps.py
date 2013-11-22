@@ -34,7 +34,7 @@ def run_peer(name, files=None):
 
     state["process"] = Popen(
         ['./peer.py', 'localhost:6667',
-         local_dir, mount_point, '0'],
+         local_dir, mount_point, '0'],)
         stderr=PIPE, stdout=PIPE)
 
     # wait for process to spin up
@@ -63,10 +63,11 @@ def sea_files(step):
 @step('I can download and read the remote file')
 def open_file(step):
     mount_point = world.peers['me']['mount_point']
+    ls = os.listdir(world.peers['me']['mount_point'])
     try:
-        with file(mount_point + "/f1") as f:
+        with open(mount_point + "/f1", 'r') as f:
             contents = f.read()
-            assert contents == "hello", "actual contents: %s" % contents
+            assert contents == "hello", "actual contents: %s, ls: %s " % (contents, ls)
     except IOError:
         assert False, "couldn't read file f1!"
 

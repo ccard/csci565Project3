@@ -89,7 +89,6 @@ This section documents our user stories that we want to test.
 - **Uploaders**:
  - Ensure that the tracking server eventually has the most recent snapshot of the files it is
   serving.
- - Ensure downloaders can still download even if the tracking server is down.
  - Continue running regardless of the state of the other uploaders/downloaders and the
   tracking server.
 
