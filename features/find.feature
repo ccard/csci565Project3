@@ -1,17 +1,16 @@
-Feature: Request file
-	In order to find available files
-	As file sharer
-	We'll query the server
+Feature: Download remote files
+	As a file sharer
+	In order to download available files
+	We'll connect our peer to the network
 
-	Scenario: Request available files
-		Given running central server
-		And peer hosting files
-		When I can connect to the central server
-		Then I see that peers files
+	Scenario: List available files
+		Given a running central server
+		And another peer hosting files
+		When I launch my own peer
+		Then I see that peer's files
 
-	Scenario: Download uncorrupted file
-		Given running central server
-		And peer hosting files
-		When I can connect to the central server
-		Then I see that peers files
-		Then see if I can open the file
+	Scenario: Download remote file
+		Given a running central server
+		And another peer hosting files
+		When I launch my own peer
+		Then I can download and read the remote file

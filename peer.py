@@ -6,7 +6,7 @@ folder for download, using the central (HAL_9000) server
 for discovery.
 
 Usage:
-  peer.py CENTRAL-SERVER LOCAL-PATH MOUNT-PATH LOCAL-PORT
+  peer.py CENTRAL-SERVER LOCAL-PATH MOUNT-PATH [LOCAL-PORT]
   peer.py (-h | --help)
 
 Arguments:
@@ -21,9 +21,10 @@ Arguments:
                   both locally-available files and remote files.
                   Accessing a remote file will result in that file
                   being downloaded and cached in the LOCAL-PATH.
-  LOCAL-PORT      Unused port to which to bind. Local files are shared
-                  to other peers over HTTP on this port, so it must
-                  be accessible to other peers.
+  LOCAL-PORT      Unused port to which to bind. If not specified,
+                  an OS-assigned ephemeral port is used.
+                  Local files are shared to other peers over HTTP
+                  on this port, so it must be accessible to other peers.
 
 Options:
   -h --help     Show this screen.
@@ -49,6 +50,7 @@ from twisted.internet import reactor, task
 from twisted.web.static import File
 from twisted.web.server import Site
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+from twisted.application.service import Service
 
 
 dictConfig({
@@ -309,13 +311,18 @@ if __name__ == "__main__":
     local_dir = args['LOCAL-PATH']
     mount_point = args['MOUNT-PATH']
     local_port = args['LOCAL-PORT']
+    if local_port is None:
+        local_port = 0
 
     # serve files from the local directory over HTTP
     resource = File(realpath(local_dir))
     factory = Site(resource)
-    reactor.listenTCP(int(local_port), factory)
+    port = reactor.listenTCP(int(local_port), factory)
 
-    print "Starting twisted event loop..."
+    # if binding to port 0, get actual listening port that OS assigned us
+    local_port = port.getHost().port
+
+    print "Starting twisted event loop, listening on %s..." % local_port
 
     # run reactor in separate thread, since FUSE is going to
     # block the main thread

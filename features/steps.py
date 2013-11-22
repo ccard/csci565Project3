@@ -8,6 +8,11 @@ import time
 import requests
 
 
+@before.each_scenario
+def setup(scenario):
+    world.peers = {}
+
+
 @step('running central server')
 def running_central_server(step):
     world.server = Popen(['./HAL_9000.py', '6667'], stderr=PIPE)
@@ -15,42 +20,76 @@ def running_central_server(step):
     assert re.search("\*\sRunning on.*", output) is not None
 
 
-@step('peer hosting files')
-def peer_hosting_files(step):
-    world.mount_point = tempfile.mkdtemp()
-    world.local_dir = tempfile.mkdtemp()
+def run_peer(name, files=None):
+    if not files:
+        files = {}
+    mount_point = tempfile.mkdtemp()
+    local_dir = tempfile.mkdtemp()
+    state = dict(mount_point=mount_point, local_dir=local_dir, files=files)
 
-    for i in range(1, 5):
-        open(world.local_dir + "/f" + repr(i) + ".txt", 'a').close()
+    for filename, contents in files.items():
+        f = open("%s/%s" % (local_dir, filename), 'w')
+        f.write(contents)
+        f.close()
 
-    world.peer_uploader = Popen(
+    state["process"] = Popen(
         ['./peer.py', 'localhost:6667',
-            world.local_dir, world.mount_point, '6666'],
+         local_dir, mount_point, '0'],
         stderr=PIPE, stdout=PIPE)
 
-    time.sleep(3)
+    # wait for process to spin up
+    time.sleep(2)
+
+    world.peers[name] = state
 
 
-@step('I can connect to the central server')
-def can_I_connect(step):
-    r = requests.head("http://localhost:6667")
-    assert r.status_code == 200
+@step('another peer hosting files')
+def peer_hosting_files(step):
+    run_peer("remote", files=dict(f1="hello", f2="world"))
 
 
-@step('Then I see that peers files')
+@step('I launch my own peer')
+def launch_own_peer(step):
+    run_peer("me")
+
+
+@step('Then I see that peer\'s files')
 def sea_files(step):
-    r = requests.get("http://localhost:6667")
-    r = r.json()
-    for f in range(1, 5):
-        fname = "f%s.txt" % repr(f)
-        assert fname in r
+    contents = os.listdir(world.peers['me']['mount_point'])
+    assert "f1" in contents, "f1 not found in mount point: %s" % contents
+    assert "f2" in contents, "f2 not found in mount point: %s" % contents
 
 
-@after.all
-def cleanup(total):
-    print "server %d" % world.server.pid
+@step('I can download and read the remote file')
+def open_file(step):
+    mount_point = world.peers['me']['mount_point']
+    try:
+        with file(mount_point + "/f1") as f:
+            contents = f.read()
+            assert contents == "hello", "actual contents: %s" % contents
+    except IOError:
+        assert False, "couldn't read file f1!"
+
+
+@after.each_scenario
+def cleanup(scenario):
     world.server.terminate()
     world.server.wait()
-    print "peer %d" % world.server.pid
-    world.peer_uploader.terminate()
-    world.peer_uploader.wait()
+
+    for peer in world.peers.values():
+        peer["process"].terminate()
+        peer["process"].wait()
+        for filename in peer["files"].keys():
+            try:
+                os.remove(peer["local_dir"] + "/" + filename)
+            except:
+                pass
+        try:
+            os.rmdir(peer["local_dir"])
+        except:
+            pass
+        try:
+            os.rmdir(peer["mount_point"])
+        except:
+            pass
+
