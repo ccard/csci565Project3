@@ -74,7 +74,7 @@ downloader is tolent to faults in other peers, it will continue to run regardles
 
 ### Environment Setup
 Our program requires several python modules that are not installed on the school computers.  
-To do this run command:
+To setup the environment run command:
 ```
 source environment
 ```
