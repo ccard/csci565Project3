@@ -27,22 +27,53 @@ that our program requires to run.
 
 ## Design
 
-Our distrubuted file system is comprised of two parts:
+Our distributed file system is comprised of two parts:
 
 1. Tracking Server
 2. Peer Node
 
 ### Tracking Server
 
-The Tracking server is responsible for knowing what files are in the system and serving query requests from 
-peer nodes.
+The Tracking server is responsible for knowing the currently available files in the system and serving query 
+requests from peer nodes in about the files in the system.  It is designed to be a state-full server but does
+not persist its knowledge of the files in the system, through the use of a timed cache.  By using a timed cache
+the tracking server tolerates peer node failures by simply timing out the files associated with the peer, if the
+peer does not refresh the tracking server within a given time interval.  The tracking server it self is tolerent
+to its own failures because its state is stored in memory.  So it only has to wait for the peer nodes to connect 
+and refresh it when it starts/restarts.
 
 ### Peer Node
+
+The peer nodes in our system are broken into two types downloaders and uploaders. Each peer is both an uploader 
+and a downloader this paradigm helps us to define the responsibilities of a peer and what kind of faults the peer 
+is tollerent of.
+
+The peer's responsibility as an *uploader* is to ensure that the tracking server eventually knows
+about all files that it is willing to upload.  This is done by periodically (about every 5 *sec*) resending all 
+files it is willing to upload to the tracking server, other wise the tracking server will simply forget about 
+it. Its other responsibility is to ensure it can upload all files that it told the tracking server about unless 
+it experiences a fault within 5 *sec* of telling the tracking server of the files its willing to upload. 
+The uploader must be tollerent to faults in the tracking server as well as other peers.  It is tollerent to
+faults in the tracking server by continuing to run and periodically trying to reconnect with the tracking server. 
+It is tollerent to faults in other peers because it is only waiting for inbound tcp connections from other peers. 
+It is tollerent to faults within itself because it only servs files out of a dedicated directory.
+
+The peer's responsibility as a *downloader* is to be able to find all or desired files in the system, be able to 
+download an uncorreupted version of the file and be able to download the file so long as one peer that is serving 
+file is still running.  The only fault that the downloader is not tollerent to is the tracking server either failing 
+before or while proccessing the downloaders query.  Once the tracking server returns the result of the query 
+the downloader no longer cares if the tracking server is running or not.  It able to download all files that 
+the tracking server told it about so long as the peers willing to upload them are running.  The downloader 
+it tollerent of corrupted files because it hashes the recieved file with *sha1* and compares it with the expected 
+hash it got from the tracking server.  If the hashse are not the same it goes to another node that is willing to 
+upload the file, so long as one uploading peer has an uncorrupted version of the file it will find it.  The 
+downloader is tolent to faults in other peers, it will continue to run regardless of the state of other peers. 
+
 
 ## Execution
 
 ### Environment Setup
-Our program requires severl python modules that are not installed on the school computers.  
+Our program requires several python modules that are not installed on the school computers.  
 To do this run command:
 ```
 source environment
