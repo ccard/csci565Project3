@@ -52,6 +52,7 @@ def peer_hosting_files(step):
 def launch_own_peer(step):
     run_peer("me")
 
+
 @step('Then I see that peer\'s files')
 def see_files(step):
     contents = os.listdir(world.peers['me']['mount_point'])
@@ -71,13 +72,16 @@ def open_file(step):
     except IOError:
         assert False, "couldn't read file f1!"
 
+
 @step('I launch a peer sharing a file')
 def add_file(step):
     run_peer("me", files={"my-file": "sup dawg"})
 
-@step('another peer connects')
+
+@step('another peer connects|a connected peer')
 def connect_another_peer(step):
     run_peer("remote", files={})
+
 
 @step('they can download and read my file')
 def check_remote(step):
@@ -91,25 +95,51 @@ def check_remote(step):
     except IOError:
         assert False, "couldn't read my-file from remote, available: %s" % ls
 
-@after.each_scenario
-def cleanup(scenario):
+
+@step('the server goes down')
+def kill_server(step):
     world.server.terminate()
     world.server.wait()
 
+
+@step('the (?:other peer|peer) goes down')
+def kill_other_peer(step):
+    kill_peer(world.peers["remote"])
+
+
+def kill_peer(peer):
+    peer["process"].terminate()
+    peer["process"].wait()
+    for filename in peer["files"].keys():
+        try:
+            os.remove(peer["local_dir"] + "/" + filename)
+        except:
+            pass
+    try:
+        os.rmdir(peer["local_dir"])
+    except:
+        pass
+    try:
+        os.rmdir(peer["mount_point"])
+    except:
+        pass
+
+@step('the server is still running')
+def check_server(step):
+    assert world.server.poll() is None, 'Server is dead!'
+
+@step('my peer is still running')
+def check_server(step):
+    assert world.peers["me"]["process"].poll() is None, \
+           'My peer is dead!'
+
+@after.each_scenario
+def cleanup(scenario):
+    if world.server.poll() is None:
+        world.server.terminate()
+        world.server.wait()
+
     for peer in world.peers.values():
-        peer["process"].terminate()
-        peer["process"].wait()
-        for filename in peer["files"].keys():
-            try:
-                os.remove(peer["local_dir"] + "/" + filename)
-            except:
-                pass
-        try:
-            os.rmdir(peer["local_dir"])
-        except:
-            pass
-        try:
-            os.rmdir(peer["mount_point"])
-        except:
-            pass
+        if peer["process"].poll() is None:
+            kill_peer(peer)
 

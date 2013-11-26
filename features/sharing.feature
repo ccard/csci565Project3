@@ -21,5 +21,3 @@ Feature: Share Files
     When another peer connects
     Then they can download and read my file
 
-
-
