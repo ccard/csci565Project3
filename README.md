@@ -8,7 +8,7 @@ csci565Project3
 - `HAL_9000.py`: a Flask-based python HTTP web server that functions
   as the tracking server for our distributed file system.
 
-- `peer.py`: one of the peers on operating in the distributed file system. It
+- `peer.py`: one of the peers operating in the distributed file system. It
   functions as the user interface as well as a peer node.  It is responsible
   for keeping the tracking server up to date with the files it has and can
   serve. It is also responsible for querying for files as well as downloading
@@ -39,8 +39,8 @@ system.  It is designed to be a state-full server but does not persist its
 knowledge of the files in the system, through the use of a timed cache.  By
 using a timed cache the tracking server tolerates peer node failures by simply
 timing out the files associated with the peer, if the peer does not refresh the
-tracking server within a given time interval.  The tracking server it self is
-tolerant to its own failures because its state is stored in memory.  So it only
+tracking server within a given time interval.  The tracking server itself is
+tolerant to its own failures because it's state is stored in memory.  So it only
 has to wait for the peer nodes to connect and refresh it when it
 starts/restarts.
 
@@ -71,9 +71,9 @@ file and be able to download the file so long as one peer that is serving file
 is still running.  The only fault that the downloader is not tolerant to is
 the tracking server either failing before or while processing the downloaders
 query.  Once the tracking server returns the result of the query the downloader
-no longer cares if the tracking server is running or not.  It able to download
+no longer cares if the tracking server is running or not.  Its able to download
 all files that the tracking server told it about so long as the peers willing
-to upload them are running.  The downloader it tolerant of corrupted files
+to upload them are running.  The downloader is tolerant of corrupted files
 because it hashes the received file with *sha1* and compares it with the
 expected hash it got from the tracking server.  If the hashes are not the same
 it goes to another node that is willing to upload the file, so long as one
