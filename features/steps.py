@@ -52,9 +52,8 @@ def peer_hosting_files(step):
 def launch_own_peer(step):
     run_peer("me")
 
-
 @step('Then I see that peer\'s files')
-def sea_files(step):
+def see_files(step):
     contents = os.listdir(world.peers['me']['mount_point'])
     assert "f1" in contents, "f1 not found in mount point: %s" % contents
     assert "f2" in contents, "f2 not found in mount point: %s" % contents
@@ -67,10 +66,30 @@ def open_file(step):
     try:
         with open(mount_point + "/f1", 'r') as f:
             contents = f.read()
-            assert contents == "hello", "actual contents: %s, ls: %s " % (contents, ls)
+            assert contents == "hello", \
+                   "actual contents: %s, ls: %s " % (contents, ls)
     except IOError:
         assert False, "couldn't read file f1!"
 
+@step('I launch a peer sharing a file')
+def add_file(step):
+    run_peer("me", files={"my-file": "sup dawg"})
+
+@step('another peer connects')
+def connect_another_peer(step):
+    run_peer("remote", files={})
+
+@step('they can download and read my file')
+def check_remote(step):
+    mount_point = world.peers['remote']['mount_point']
+    ls = os.listdir(world.peers['remote']['mount_point'])
+    try:
+        with open(mount_point + "/my-file", 'r') as f:
+            contents = f.read()
+            assert contents == "sup dawg", \
+                   "actual contents: %s, ls: %s " % (contents, ls)
+    except IOError:
+        assert False, "couldn't read my-file from remote, available: %s" % ls
 
 @after.each_scenario
 def cleanup(scenario):

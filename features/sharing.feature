@@ -5,12 +5,21 @@ Feature: Share Files
 
   Background:
     Given a running central server
-    And another peer hosting files
 
   Scenario: List available files
+    Given another peer hosting files
     When I launch my own peer
     Then I see that peer's files
 
   Scenario: Download remote file
+    Given another peer hosting files
     When I launch my own peer
     Then I can download and read the remote file
+
+  Scenario: Share file
+    Given I launch a peer sharing a file
+    When another peer connects
+    Then they can download and read my file
+
+
+
