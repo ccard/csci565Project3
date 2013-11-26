@@ -1,7 +1,7 @@
 Feature: Central server is robust to peer failure
   As a server administrator
   If another peer goes down
-  I don't want my the server to crash
+  I don't want my server to crash
 
   Scenario: Peer goes down
     Given a running central server
