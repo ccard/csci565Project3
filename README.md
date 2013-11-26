@@ -34,7 +34,7 @@ Our distributed file system is comprised of two parts:
 ### Tracking Server
 
 The Tracking server is responsible for knowing the currently available files in
-the system and serving query requests from peer nodes in about the files in the
+the system and serving query requests from peer nodes about the files in the
 system.  It is designed to be a state-full server but does not persist its
 knowledge of the files in the system, through the use of a timed cache.  By
 using a timed cache the tracking server tolerates peer node failures by simply
@@ -46,8 +46,8 @@ starts/restarts.
 
 ### Peer Node
 
-The peer nodes in our system are broken into two types downloaders and
-uploaders. Each peer is both an uploader and a downloader this paradigm helps
+The peer nodes in our system are broken into two types: downloaders and
+uploaders. Each peer is both an uploader and a downloader, this paradigm helps
 us to define the responsibilities of a peer and what kind of faults the peer is
 tolerant of.
 
@@ -56,7 +56,7 @@ server eventually knows about all files that it is willing to upload.  This is
 done by periodically (about every 5 *sec*) resending all files it is willing to
 upload to the tracking server, other wise the tracking server will simply
 forget about it.  Its other responsibility is to ensure it can upload all files
-that it told the tracking server about unless it experiences a fault within
+that it told the tracking server about, unless it experiences a fault within
 5 *sec* of telling the tracking server of the files its willing to upload.  The
 uploader must be tolerant to faults in the tracking server as well as other
 peers.  It is tolerant to faults in the tracking server by continuing to run
@@ -126,7 +126,7 @@ every 5 seconds, and sends its own local file list every 5 seconds.
 If the peer cannot reach the central server, it will log a failure and continue
 to work with the files it has available.
 
-Note that if the mounted directory is viewed in a GUI viewer such as
+**Note**: If the mounted directory is viewed in a GUI viewer such as
 `nautilus`, new files won't be seen until after a manual refresh (CTRL + R).
 Furthermore, nautilus may choose to read file contents, triggering a mass
 download when the directory is opened. Using shell commands such as `ls` and
